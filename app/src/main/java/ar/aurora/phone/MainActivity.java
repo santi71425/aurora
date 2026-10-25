@@ -32,6 +32,8 @@ public final class MainActivity extends Activity implements Conversation.Listene
     private Button wake;
     private ManualVoice voice;
     private SpeechRecognizer modelRequester;
+    private boolean foreground;
+    private String manualOrigin="",pendingDictation;
     private final Runnable refresh=new Runnable() {
         public void run() {
             boolean listening=WakeVoiceService.instance!=null;
@@ -56,13 +58,13 @@ public final class MainActivity extends Activity implements Conversation.Listene
         input=new EditText(this);input.setTextColor(AppUi.TEXT);input.setHintTextColor(AppUi.MUTED);input.setTextSize(16);input.setHint("Pedile algo a Jarvis");input.setMinLines(1);input.setMaxLines(4);input.setPadding(0,dp(6),dp(6),dp(8));input.setBackgroundColor(Color.TRANSPARENT);
         input.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE|android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);composer.addView(input);
         LinearLayout controls=new LinearLayout(this);controls.setGravity(Gravity.CENTER_VERTICAL);
-        TextView note=AppUi.text(this,"Voz y texto",11,AppUi.MUTED);controls.addView(note,new LinearLayout.LayoutParams(0,-2,1));
-        Button mic=AppUi.button(this,"Mic",false);mic.setContentDescription("Dictar un comando");mic.setOnClickListener(v -> {if(voice.listening()) voice.cancel();else voice.begin();});controls.addView(mic,new LinearLayout.LayoutParams(dp(60),dp(44)));
+        TextView note=AppUi.text(this,"Mic ejecuta órdenes",11,AppUi.MUTED);controls.addView(note,new LinearLayout.LayoutParams(0,-2,1));
+        Button mic=AppUi.button(this,"Mic",false);mic.setContentDescription("Decir y ejecutar una orden");mic.setOnClickListener(v -> {if(voice.listening()) voice.cancel();else {manualOrigin=PhoneControlService.instance==null?"":PhoneControlService.instance.currentPackage();voice.begin();}});controls.addView(mic,new LinearLayout.LayoutParams(dp(60),dp(44)));
         Button send=AppUi.button(this,"↑",true);send.setTextSize(23);send.setContentDescription("Enviar comando");send.setOnClickListener(v -> execute());LinearLayout.LayoutParams sendParams=new LinearLayout.LayoutParams(dp(44),dp(44));sendParams.leftMargin=dp(6);controls.addView(send,sendParams);composer.addView(controls);root.addView(composer);
         wake=AppUi.button(this,"Activar «OK Jarvis»",false);wake.setOnClickListener(v -> toggleWake());LinearLayout.LayoutParams wakeParams=new LinearLayout.LayoutParams(-1,dp(44));wakeParams.topMargin=dp(8);root.addView(wake,wakeParams);
         voice=new ManualVoice(this,new ManualVoice.Listener() {
             public void info(String text) {state.setText(text);if(voice!=null&&!voice.listening()) Conversation.reply(MainActivity.this,text);}
-            public void result(String text) {input.setText(text);input.setSelection(input.length());state.setText("Revisá el dictado y tocá ↑");}
+            public void result(String text) {acceptDictation(text);}
         });
         VoiceOutput.initialize(this);changed();if(saved!=null) input.setText(saved.getString("draft",""));
     }
@@ -95,6 +97,11 @@ public final class MainActivity extends Activity implements Conversation.Listene
         String text=input.getText().toString().trim();if(text.isEmpty()) return;voice.cancel();input.setText("");Conversation.user(text);
         PhoneControlService service=PhoneControlService.instance;String origin=service==null?"":service.currentPackage();
         PhoneActions.dispatch(this,CommandParser.parse(text),origin,false);
+    }
+    private void acceptDictation(String text) {
+        if(!foreground) {pendingDictation=text;return;}
+        input.setText("");state.setText("Orden reconocida: "+text);Conversation.user(text);
+        PhoneActions.dispatch(this,CommandParser.parse(text),manualOrigin,false);
     }
     private void settings() {
         String[] labels={(VoiceOutput.enabled(this)?"✓ ":"")+"Voz de respuesta",(getSharedPreferences("jarvis",0).getBoolean("panel",false)?"✓ ":"")+"Micrófono flotante","Configurar Accesibilidad","Motor de dictado","Preparar reconocimiento local","Ayuda y límites","Borrar conversación"};
@@ -154,7 +161,8 @@ public final class MainActivity extends Activity implements Conversation.Listene
     }
     @Override protected void onActivityResult(int code,int result,Intent data) {super.onActivityResult(code,result,data);voice.activityResult(code,result,data);}
     @Override protected void onSaveInstanceState(Bundle state) {state.putString("draft",input.getText().toString());super.onSaveInstanceState(state);}
-    @Override protected void onResume() {super.onResume();Conversation.listener=this;changed();main.post(refresh);}
-    @Override protected void onPause() {main.removeCallbacks(refresh);voice.pause();if(Conversation.listener==this) Conversation.listener=null;super.onPause();}
+    @Override protected void onResume() {super.onResume();foreground=true;Conversation.listener=this;changed();main.post(refresh);}
+    @Override protected void onPostResume() {super.onPostResume();if(pendingDictation!=null) {String text=pendingDictation;pendingDictation=null;acceptDictation(text);}}
+    @Override protected void onPause() {foreground=false;main.removeCallbacks(refresh);voice.pause();if(Conversation.listener==this) Conversation.listener=null;super.onPause();}
     @Override protected void onDestroy() {main.removeCallbacksAndMessages(null);voice.destroy();if(modelRequester!=null) modelRequester.destroy();if(Conversation.listener==this) Conversation.listener=null;super.onDestroy();}
 }

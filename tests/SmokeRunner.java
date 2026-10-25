@@ -72,6 +72,12 @@ public final class SmokeRunner extends Instrumentation {
             ui(() -> {if(find(main.getWindow().getDecorView(),TextView.class,"Hola, soy Jarvis")==null) throw new AssertionError("Falta respuesta de conversación");});
             command(main,"deja de escuchar");
             ui(() -> {if(find(main.getWindow().getDecorView(),TextView.class,"OK Jarvis apagado")==null) throw new AssertionError("No funciona apagar escucha");});
+            java.lang.reflect.Method dictated=main.getClass().getDeclaredMethod("acceptDictation",String.class);dictated.setAccessible(true);
+            ActivityMonitor voiceSearch=addMonitor("ar.aurora.phone.GalleryActivity",null,false);
+            ui(() -> {try {dictated.invoke(main,"Mostrame fotos de perros");}catch(Exception error) {throw new AssertionError(error);}});
+            Activity dictatedActivity=waitForMonitorWithTimeout(voiceSearch,5000);removeMonitor(voiceSearch);
+            if(dictatedActivity==null) throw new AssertionError("Una orden dictada no abrió la búsqueda sin pulsar enviar");
+            ui(() -> dictatedActivity.finish());waitActive(main);
             ActivityMonitor whatsapp=addMonitor("ar.aurora.phone.WhatsAppActivity",null,false);
             command(main,"Escribile a Mom por WhatsApp: Te amo");
             Activity message=waitForMonitorWithTimeout(whatsapp,5000); removeMonitor(whatsapp);

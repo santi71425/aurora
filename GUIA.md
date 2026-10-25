@@ -45,7 +45,7 @@ El control no es total: respeta el bloqueo, campos de contraseña, pantallas pro
 
 En **⋮ → Micrófono flotante** podés mostrar una barra pequeña con Hablar y Apagar. El dictado se hace en una ventana propia visible y temporal; no necesita permisos de superposición general. Su acceso depende del servicio de Accesibilidad. El botón Apagar detiene la escucha y oculta la barra.
 
-En el chat, Mic completa el cuadro: revisá el dictado y tocá ↑. El botón + inicia una conversación vacía. Los mensajes se mantienen en memoria y se limitan a los últimos 80; no hay base de datos ni sincronización de conversaciones. Un borrador puede conservarse por el mecanismo de estado de actividad de Android.
+En el chat, Mic reconoce y ejecuta la orden al terminar el dictado. No hace falta pulsar ↑ para una orden de voz. La flecha se usa para el texto escrito. Las acciones que necesitan revisión mantienen sus confirmaciones. El botón + inicia una conversación vacía. Los mensajes se mantienen en memoria y se limitan a los últimos 80; no hay base de datos ni sincronización de conversaciones. Un borrador puede conservarse por el mecanismo de estado de actividad de Android.
 
 ## Fotos y WhatsApp conservados
 
