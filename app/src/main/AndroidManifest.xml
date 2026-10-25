@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.RECORD_AUDIO" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
   <uses-permission android:name="android.permission.READ_CONTACTS" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -13,8 +17,10 @@
     <package android:name="com.sec.android.gallery3d" />
     <intent><action android:name="android.speech.RecognitionService" /></intent>
     <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
+    <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
+    <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent>
   </queries>
-  <application android:label="Aurora" android:icon="@drawable/icon" android:theme="@style/AppTheme" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true">
+  <application android:label="Jarvis" android:icon="@drawable/icon" android:theme="@style/AppTheme" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true">
     <activity android:name=".MainActivity" android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
@@ -24,7 +30,10 @@
     <activity android:name=".DuplicatesActivity" android:exported="false" />
     <activity android:name=".WhatsAppActivity" android:exported="false" />
     <activity android:name=".GalleryActivity" android:exported="false" />
-    <service android:name=".ReelsService" android:exported="true" android:label="Aurora · Control de apps" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+    <activity android:name=".CommandActivity" android:exported="false" android:theme="@style/CommandTheme" android:excludeFromRecents="true" />
+    <activity android:name=".UnlockActivity" android:exported="false" />
+    <service android:name=".WakeVoiceService" android:exported="false" android:foregroundServiceType="microphone" />
+    <service android:name=".PhoneControlService" android:exported="true" android:label="Jarvis · Control del teléfono" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
       <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
       <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility" />
     </service>

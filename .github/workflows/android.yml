@@ -1,4 +1,4 @@
-name: Aurora - compilar y probar
+name: Jarvis - compilar y probar
 
 on:
   push:
@@ -30,10 +30,10 @@ jobs:
       - name: Guardar instalador
         uses: actions/upload-artifact@v4
         with:
-          name: Aurora-APK
+          name: Jarvis-APK
           path: |
-            dist/Aurora-0.2.apk
-            dist/Aurora-0.2.apk.sha256
+            dist/Jarvis-0.3.apk
+            dist/Jarvis-0.3.apk.sha256
             dist/build-info.json
           if-no-files-found: error
           retention-days: 30
@@ -52,7 +52,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Aurora-pruebas-emulador
+          name: Jarvis-pruebas-emulador
           path: dist/emulator-*
           if-no-files-found: ignore
           retention-days: 30

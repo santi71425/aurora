@@ -252,7 +252,7 @@ public final class DuplicatesActivity extends Activity {
     }
     @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] grants) {
         super.onRequestPermissionsResult(code,permissions,grants);
-        if(code==PERMISSION) { scope=permissionScope(); updateScope(); if(!hasAccess()) progress.setText("Podés habilitar el permiso desde Ajustes → Aplicaciones → Aurora → Permisos."); }
+        if(code==PERMISSION) { scope=permissionScope(); updateScope(); if(!hasAccess()) progress.setText("Podés habilitar el permiso desde Ajustes → Aplicaciones → Jarvis → Permisos."); }
     }
     @Override protected void onActivityResult(int code,int result,Intent data) {
         super.onActivityResult(code,result,data);

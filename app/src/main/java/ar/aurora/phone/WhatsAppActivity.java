@@ -120,7 +120,7 @@ public final class WhatsAppActivity extends Activity {
     @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] grants) {
         super.onRequestPermissionsResult(code,permissions,grants);
         if (code==31 && grants.length>0 && grants[0]==PackageManager.PERMISSION_GRANTED) lookup();
-        else if (code==31) status.setText("Sin acceso a contactos no puedo buscar el nombre. Podés habilitarlo en Ajustes → Aplicaciones → Aurora → Permisos.");
+        else if (code==31) status.setText("Sin acceso a contactos no puedo buscar el nombre. Podés habilitarlo en Ajustes → Aplicaciones → Jarvis → Permisos.");
     }
     @Override protected void onResume() { super.onResume(); inForeground=true; if (waitingResults!=null) { List<Phone> result=waitingResults; waitingResults=null; choose(result); } }
     @Override protected void onPause() { inForeground=false; super.onPause(); }

@@ -12,17 +12,19 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 final class AppUi {
-    static final int BG = Color.rgb(17,18,28), CARD = Color.rgb(30,32,47);
-    static final int TEXT = Color.rgb(239,239,248), MUTED = Color.rgb(175,178,198), ACCENT = Color.rgb(182,154,255);
+    static final int BG = Color.rgb(33,33,33), CARD = Color.rgb(48,48,48);
+    static final int TEXT = Color.rgb(244,244,244), MUTED = Color.rgb(171,171,171), ACCENT = Color.rgb(208,244,226);
     static int dp(Context c, int n) { return Math.round(n * c.getResources().getDisplayMetrics().density); }
     static TextView text(Context c, String value, int size, int color) {
         TextView t = new TextView(c); t.setText(value); t.setTextSize(size); t.setTextColor(color); return t;
     }
     static Button button(Context c, String value, boolean primary) {
         Button b = new Button(c); b.setText(value); b.setAllCaps(false); b.setTextSize(14);
-        b.setTextColor(primary ? BG : TEXT); b.setBackgroundTintList(ColorStateList.valueOf(primary ? ACCENT : CARD)); return b;
+        b.setTextColor(primary ? BG : TEXT); b.setMinHeight(dp(c,44));b.setMinimumWidth(dp(c,44));b.setPadding(dp(c,12),dp(c,8),dp(c,12),dp(c,8));
+        b.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(Color.rgb(100,100,100)),background(c,primary?TEXT:CARD,24),null));return b;
     }
     static LinearLayout column(Context c) { LinearLayout v = new LinearLayout(c); v.setOrientation(LinearLayout.VERTICAL); return v; }
+    static GradientDrawable background(Context c,int color,int radius) {GradientDrawable bg=new GradientDrawable();bg.setColor(color);bg.setCornerRadius(dp(c,radius));return bg;}
     static LinearLayout card(Context c) {
         LinearLayout v = column(c); int p = dp(c,16); v.setPadding(p,p,p,p);
         GradientDrawable bg = new GradientDrawable(); bg.setColor(CARD); bg.setCornerRadius(dp(c,18)); v.setBackground(bg); return v;

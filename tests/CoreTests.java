@@ -25,12 +25,9 @@ public final class CoreTests {
         message("WhatsApp Mom: buscá fotos duplicadas","Mom","buscá fotos duplicadas");
         message("Escríbele a \"Mamá\" por WhatsApp: \"Te amo\"","Mamá","Te amo");
         message("Enviá un WhatsApp a Mom que diga No borres nada, por favor","Mom","No borres nada, por favor");
-        String[] reels={"Pasá los reels cada 20 segundos","reels cada 10 segundos","Deslizá los reels automáticamente","los reels de Instagram cada 3 s","reels cada 300 segundos","reels cada 2 minutos","reels cada 5 min.","REELS."};
-        int[] seconds={20,10,20,3,300,120,300,20};
-        for(int i=0;i<reels.length;i++) { type(reels[i],CommandParser.Type.REELS); equal(seconds[i],CommandParser.parse(reels[i]).seconds); }
         for(String s:new String[]{"detener","Pará los reels","detén la automatización.","cancelar"}) type(s,CommandParser.Type.STOP);
         for(String s:new String[]{"buscá fotos duplicadas","Analiza mis imágenes repetidas en mi galería","Buscá duplicados","borrar fotos duplicadas"}) type(s,CommandParser.Type.DUPLICATES);
-        for(String s:new String[]{""," ","reels cada 2 segundos","reels cada 301 segundos","reels cada 0 minutos","reels cada 6 minutos","reels cada -20 segundos","reels cada 999999999999999999999999 segundos","Escribile a Mom por WhatsApp:","WhatsApp Mom:","WhatsApp : Te amo","WhatsApp Mom: \"\"","Escribile a Mom por WhatsApp","abre WhatsApp","No detener los reels","Quiero que no borres mis fotos","¿Quién es Mom?"}) type(s,CommandParser.Type.UNKNOWN);
+        for(String s:new String[]{""," ","reels cada 2 segundos","reels cada 301 segundos","reels cada 0 minutos","reels cada 6 minutos","reels cada -20 segundos","reels cada 999999999999999999999999 segundos","Escribile a Mom por WhatsApp:","WhatsApp Mom:","WhatsApp : Te amo","WhatsApp Mom: \"\"","Escribile a Mom por WhatsApp","No detener los reels","Quiero que no borres mis fotos","¿Quién es Mom?"}) type(s,CommandParser.Type.UNKNOWN);
         type(null,CommandParser.Type.UNKNOWN);
         equal("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",hash(""));
         equal("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",hash("abc"));
@@ -47,16 +44,12 @@ public final class CoreTests {
         equal(3,CommandParser.parse("desliza arriba tres veces").count);
         equal("google",CommandParser.parse("desliza abajo en Google Fotos").target);
         for(String s:new String[]{"desliza arriba 21 veces","desliza abajo cero veces","no deslices arriba","reels cada mil segundos","reels cada 6 minutos"}) type(s,CommandParser.Type.UNKNOWN);
-        equal(10,CommandParser.parse("reels cada diez segundos").seconds);
-        equal(20,CommandParser.parse("¿Podés pasar los reels cada veinte segundos?").seconds);
-        type("Quiero que pases los reels cada veinte segundos",CommandParser.Type.REELS);
         type("Quiero que deslices hacia abajo",CommandParser.Type.SCROLL);
-        equal("down",CommandParser.parse("pasá los reels hacia abajo cada 10 segundos").direction);
         for(String s:new String[]{"capturas de pantalla","Mostrame videos grandes","¿Podés mostrarme capturas de pantalla?","Encuentra fotos de perros en Google Fotos","busca fotos con mujeres en Google Fotos","Buscame fotos de Madrid en la galería Samsung","fotos de enero de 2026","Quiero que me muestres fotos de perros","Me gustaría ver videos grandes","Encuéntrame fotos de Madrid"}) type(s,CommandParser.Type.GALLERY);
         type("reels cada 1073741825 minutos",CommandParser.Type.UNKNOWN);
         equal("google",CommandParser.parse("busca fotos de perros en Google Fotos").target);
         type("elegir fotos de la nube",CommandParser.Type.PICK);
-        type("abrí Google Fotos",CommandParser.Type.GALLERY);
+        type("abrí Google Fotos",CommandParser.Type.OPEN_APP);
         LocalDate today=LocalDate.of(2026,10,25);
         GalleryQuery shots=GalleryQuery.parse("Mostrame capturas de pantalla",today);
         equal(true,shots.screenshots);equal("",shots.terms);
@@ -76,6 +69,20 @@ public final class CoreTests {
         equal("fotos de perros",GalleryQuery.parse("Buscá fotos de perros en Google Fotos",today).externalTerms());
         equal("perros",GalleryQuery.parse("Buscá fotos de perros en Google Fotos",today).terms);
         equal("fotos con mujeres",GalleryQuery.parse("busca fotos con mujeres en Google Fotos",today).externalTerms());
+        for(String phrase:new String[]{"bajá","baja la pantalla","subí","sube un poco","OK Jarvis, baja","OK, Jarvis, bajá"}) type(phrase,CommandParser.Type.SCROLL);
+        equal("up",CommandParser.parse("bajá").direction);equal("down",CommandParser.parse("subí").direction);
+        for(String phrase:new String[]{"reels cada 20 segundos","pasa los reels","desliza reels automaticamente","no desbloquees mi telefono","no abras WhatsApp"}) type(phrase,CommandParser.Type.UNKNOWN);
+        type("abrí WhatsApp",CommandParser.Type.OPEN_APP);equal("WhatsApp",CommandParser.parse("abrí WhatsApp").query);
+        type("desbloqueá mi teléfono",CommandParser.Type.UNLOCK);
+        for(String phrase:new String[]{"atrás","inicio","abre notificaciones","bajá el volumen","sube volumen","captura de pantalla","bloquea mi telefono","deja de escuchar"}) type(phrase,CommandParser.Type.SYSTEM);
+        equal("volume_down",CommandParser.parse("baja el volumen").action);
+        type("toca el botón Buscar",CommandParser.Type.TAP);equal("Buscar",CommandParser.parse("toca el botón Buscar").query);
+        type("escribe: Hola.",CommandParser.Type.TYPE_TEXT);equal("Hola.",CommandParser.parse("escribe: Hola.").query);
+        type("hola",CommandParser.Type.HELP);type("¿Qué podés hacer?",CommandParser.Type.HELP);
+        for(String phrase:new String[]{"OK Jarvis, bajá","ok jarvis abre WhatsApp","Okay, Jarvis: subí","Oye Jarvis","hey Jarvis, atrás"}) equal(true,WakePhrase.parse(phrase).detected);
+        equal("bajá",WakePhrase.parse("OK Jarvis, bajá").command);equal("",WakePhrase.parse("oye Jarvis").command);
+        for(String phrase:new String[]{"Jarvis","bajá","no digas ok Jarvis baja","estoy hablando de ok jarvis","ok jarvisito baja","abre WhatsApp", ""}) equal(false,WakePhrase.parse(phrase).detected);
+        equal(false,WakePhrase.parse(null).detected);
         System.out.println("CoreTests: "+checks+" comprobaciones correctas");
     }
 }

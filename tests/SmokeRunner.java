@@ -30,7 +30,7 @@ public final class SmokeRunner extends Instrumentation {
         runOnMainSync(() -> {
             View decor=main.getWindow().getDecorView();
             EditText input=(EditText)find(decor,EditText.class,null);
-            Button go=(Button)find(decor,Button.class,"Continuar");
+            Button go=(Button)find(decor,Button.class,"↑");
             if(input==null||go==null) throw new AssertionError("Falta entrada de comandos");
             input.setText(text); go.performClick();
         });
@@ -41,9 +41,22 @@ public final class SmokeRunner extends Instrumentation {
         try {
             Activity main=startActivitySync(new Intent().setClassName("ar.aurora.phone","ar.aurora.phone.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             waitForIdleSync();
-            runOnMainSync(() -> { if(find(main.getWindow().getDecorView(),TextView.class,"Aurora")==null) throw new AssertionError("No abrió Aurora"); });
+            runOnMainSync(() -> { if(find(main.getWindow().getDecorView(),TextView.class,"Jarvis")==null) throw new AssertionError("No abrió Jarvis"); });
+            runOnMainSync(() -> {
+                Button send=(Button)find(main.getWindow().getDecorView(),Button.class,"↑");
+                Button wake=(Button)find(main.getWindow().getDecorView(),Button.class,"OK Jarvis");
+                if(send==null||wake==null) throw new AssertionError("Faltan controles de la conversación o de activación");
+                android.graphics.Rect visible=new android.graphics.Rect();
+                if(!send.getGlobalVisibleRect(visible)||visible.height()<32||visible.width()<32) throw new AssertionError("El compositor está recortado");
+            });
+            Class<?> wakeService=getTargetContext().getClassLoader().loadClass("ar.aurora.phone.WakeVoiceService");
+            if(wakeService.getField("instance").get(null)!=null) throw new AssertionError("El micrófono continuo se inició sin activación explícita");
             command(main,"detener");
             runOnMainSync(() -> { if(find(main.getWindow().getDecorView(),TextView.class,"Automatización detenida")==null) throw new AssertionError("No funciona Detener"); });
+            command(main,"hola");
+            runOnMainSync(() -> {if(find(main.getWindow().getDecorView(),TextView.class,"Hola, soy Jarvis")==null) throw new AssertionError("Falta respuesta de conversación");});
+            command(main,"deja de escuchar");
+            runOnMainSync(() -> {if(find(main.getWindow().getDecorView(),TextView.class,"OK Jarvis apagado")==null) throw new AssertionError("No funciona apagar escucha");});
             ActivityMonitor whatsapp=addMonitor("ar.aurora.phone.WhatsAppActivity",null,false);
             command(main,"Escribile a Mom por WhatsApp: Te amo");
             Activity message=waitForMonitorWithTimeout(whatsapp,5000); removeMonitor(whatsapp);
@@ -86,12 +99,18 @@ public final class SmokeRunner extends Instrumentation {
             }
             if(!matched[0]) throw new AssertionError("El filtro no encontró la captura de prueba");
             getTargetContext().getContentResolver().delete(fixture,null,null);fixture=null;
-            runOnMainSync(() -> {capture.finish();main.finish();});
-            result.putString("stream","AURORA_SMOKE_OK: inicio, detener, mensaje, duplicados sin selección, búsqueda flexible y captura local encontrada\n");
+            runOnMainSync(() -> {capture.finish();});waitForIdleSync();
+            runOnMainSync(() -> {
+                Button fresh=(Button)find(main.getWindow().getDecorView(),Button.class,"+");
+                if(fresh==null) throw new AssertionError("Falta nueva conversación");fresh.performClick();
+                if(find(main.getWindow().getDecorView(),TextView.class,"¿Qué hacemos hoy?")==null) throw new AssertionError("No limpió la conversación");
+                main.finish();
+            });
+            result.putString("stream","JARVIS_SMOKE_OK: interfaz Jarvis y compositor visible, conversación, apagar escucha, detener, mensaje, duplicados, búsqueda flexible y captura local encontrada\n");
             finish(Activity.RESULT_OK,result);
         } catch(Throwable error) {
             if(fixture!=null) {try {getTargetContext().getContentResolver().delete(fixture,null,null);}catch(RuntimeException ignored) {}}
-            result.putString("stream","AURORA_SMOKE_FAILED: "+error.toString()+"\n");
+            result.putString("stream","JARVIS_SMOKE_FAILED: "+error.toString()+"\n");
             finish(Activity.RESULT_CANCELED,result);
         }
     }

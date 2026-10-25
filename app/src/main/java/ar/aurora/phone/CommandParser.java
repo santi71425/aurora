@@ -6,12 +6,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class CommandParser {
-    public enum Type { WHATSAPP, REELS, STOP, DUPLICATES, SCROLL, GALLERY, PICK, UNKNOWN }
+    public enum Type { WHATSAPP, STOP, DUPLICATES, SCROLL, GALLERY, PICK, OPEN_APP, SYSTEM, UNLOCK, TAP, TYPE_TEXT, HELP, UNKNOWN }
     public static final class Command {
         public final Type type;
         public final String contact, message;
         public final int seconds;
-        public String direction="up", target="", query="";
+        public String direction="up", target="", query="", action="";
+        public boolean contentScroll;
         public int count=1;
         Command(Type type, String contact, String message, int seconds) {
             this.type=type; this.contact=contact; this.message=message; this.seconds=seconds;
@@ -29,10 +30,11 @@ public final class CommandParser {
         p("^"+TO+"(.+?)"+SEP+"(.+)$")
     };
     private static final Pattern STOP = p("^(?:detener|det[eé]n|deten[eé]|par[aá]|parar|stop|cancelar|cancel[aá])(?:\\s+(?:(?:los|la|el)\\s+)?(?:reels|automatizaci[oó]n|deslizamiento))?$");
-    private static final Pattern REELS = p("^(?:(?:pas[aá]|pasar|desliz[aá]|deslizar|inici[aá]|iniciar|activ[aá]|activar)\\s+)?(?:los\\s+)?reels(?:\\s+(?:de|en)\\s+instagram)?(?:\\s+autom[aá]ticamente)?(?:\\s+cada\\s+(\\d+)\\s*(segundos?|segs?\\.?|s|minutos?|min\\.?))?$");
     private static final Pattern PHOTOS = p("^(?:(?:busc[aá]|buscar|analiz[aá]|analiza|analizar|revis[aá]|revisar|borr[aá]|borrar|elimin[aá]|eliminar)\\s+)?(?:(?:las|mis)\\s+)?(?:fotos|im[aá]genes)\\s+(?:duplicadas|repetidas)(?:\\s+(?:en|de)\\s+(?:(?:mi|la)\\s+)?galer[ií]a)?$");
     public static Command parse(String input) {
         if (input==null) return unknown();
+        WakePhrase wake=WakePhrase.parse(input);
+        if(wake.detected) return wake.command.isEmpty()?PhoneCommands.parse("hola","hola"):parse(wake.command);
         String s=stripPoliteness(input);
         for (Pattern pattern : MESSAGES) {
             Matcher m=pattern.matcher(s);
@@ -41,6 +43,7 @@ public final class CommandParser {
                 return name.isEmpty()||message.isEmpty() ? unknown() : new Command(Type.WHATSAPP,name,message,20);
             }
         }
+        String actionOriginal=s;
         s=s.replaceFirst("[.!?]+$","").trim();
         String n=normalize(s).replaceFirst("\\s+por favor$","").replaceAll("\\bmostrarme\\b","mostrame").replaceAll("\\bbuscarme\\b","buscame");
         n=n.replaceFirst("^(?:me )?(?:mostras|muestras|muestres|mostres) ","mostrame ").replaceFirst("^encuentrame ","encuentra ");
@@ -49,20 +52,10 @@ public final class CommandParser {
         if(n.matches("(?:dej[aá] de (?:pasar|deslizar)(?: los reels)?|para todo|deten todo|detener todo|frena(?: los reels)?)")) return new Command(Type.STOP,"","",20);
         if (PHOTOS.matcher(s).matches() || p("^busc[aá] (?:los )?duplicados$").matcher(s).matches()) return new Command(Type.DUPLICATES,"","",20);
         if(n.matches("(?:busca|buscame|encuentra|encontra|mostrame|muestrame|revisa|revisar|analiza|analizar|elimina|eliminar|borra|borrar) (?:las |mis )?(?:fotos|imagenes|copias) (?:duplicadas|repetidas)(?: del telefono| en mi galeria)?")) return new Command(Type.DUPLICATES,"","",20);
+        Command phone=PhoneCommands.parse(n,actionOriginal);
+        if(phone!=null) return phone;
         Command extended=extended(n,s);
         if(extended!=null) return extended;
-        Matcher m=REELS.matcher(s);
-        if (m.matches()) {
-            long intervalValue=20;
-            if (m.group(1)!=null) {
-                try {
-                    intervalValue=Long.parseLong(m.group(1));
-                    if (intervalValue>300) return unknown();
-                    if (m.group(2).toLowerCase(Locale.ROOT).startsWith("min")) intervalValue*=60;
-                } catch (NumberFormatException bad) { return unknown(); }
-            }
-            if (intervalValue>=3 && intervalValue<=300) return new Command(Type.REELS,"","",(int)intervalValue);
-        }
         return unknown();
     }
     public static String normalize(String s) { return Normalizer.normalize(s,Normalizer.Form.NFD).replaceAll("\\p{M}","").toLowerCase(Locale.ROOT).trim().replaceAll("\\s+"," "); }
@@ -98,22 +91,6 @@ public final class CommandParser {
             Command c=new Command(Type.SCROLL,"","",20); c.count=count;c.target=target(n);
             c.direction=swipe.group(1).equals("arriba")?"up":swipe.group(1).equals("abajo")?"down":swipe.group(1).equals("izquierda")?"left":"right";
             return c;
-        }
-        if(n.contains("reels")) {
-            String rest=n; int seconds=20;
-            Matcher interval=p("\\bcada ([\\w]+) (segundos?|s|minutos?|min\\.?)").matcher(rest);
-            if(interval.find()) {
-                seconds=number(interval.group(1)); if(seconds<0||seconds>300) return unknown();
-                if(interval.group(2).startsWith("min")) seconds*=60;
-                if(seconds<3||seconds>300) return unknown();
-                rest=interval.replaceFirst("").trim();
-            } else if(rest.contains("cada")) return unknown();
-            String direction=rest.contains("hacia abajo")?"down":"up";
-            rest=rest.replaceAll("\\b(?:hacia|para) (?:arriba|abajo)\\b","").replaceAll("\\b(?:en|de) instagram\\b","").replaceAll("\\b(?:automaticamente|automaticos|automatico|solos)\\b","").trim().replaceAll("\\s+"," ");
-            if(rest.matches("(?:(?:pasa|pasar|pases|desliza|deslizar|deslices|avanza|avanzar|avances|inicia|iniciar|inicies|activa|activar|actives|reproduce|reproducir|reproduzcas|pon|pone|poneme) )?(?:los )?reels")) {
-                Command c=new Command(Type.REELS,"","",seconds); c.direction=direction; return c;
-            }
-            return null;
         }
         if(n.matches("(?:(?:busca|buscame|buscar|encuentra|encontra|encontrar|mostrame|muestrame|muestra|mostrar|ver|quiero ver|filtra|filtrar) )?(?:las |mis |los )?(?:fotos|imagenes|videos|capturas)(?: .*)?")) {
             Command c=new Command(Type.GALLERY,"","",20); c.query=original; c.target=target(n); return c;

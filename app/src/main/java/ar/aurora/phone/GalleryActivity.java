@@ -126,14 +126,14 @@ public final class GalleryActivity extends Activity {
         String pkg=target.equals("google")?"com.google.android.apps.photos":"com.sec.android.gallery3d";
         if(terms.isEmpty()) {launch(pkg);return;}
         new AlertDialog.Builder(this).setTitle("Buscar en "+(target.equals("google")?"Google Fotos":"Galería Samsung"))
-            .setMessage("Consulta: "+terms+"\n\nSe buscará en la app con tu cuenta actual. Sus resultados dependen de su indexación. Aurora no importa ni tiene acceso directo a toda tu biblioteca en la nube. Con Accesibilidad intentará escribir y confirmar la búsqueda; si no reconoce el buscador, te avisará.")
+            .setMessage("Consulta: "+terms+"\n\nSe buscará en la app con tu cuenta actual. Sus resultados dependen de su indexación. Jarvis no importa ni tiene acceso directo a toda tu biblioteca en la nube. Con Accesibilidad intentará escribir y confirmar la búsqueda; si no reconoce el buscador, te avisará.")
             .setNegativeButton("Cancelar",null).setNeutralButton("Copiar y abrir",(d,w) -> {
                 ((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("Búsqueda de fotos",terms));
                 launch(pkg);summary.setText("Pegá la consulta en Buscar dentro de la app.");
-            }).setPositiveButton("Buscar con Aurora",(d,w) -> {
-                if(ReelsService.instance!=null) ReelsService.instance.search(target,terms);
+            }).setPositiveButton("Buscar con Jarvis",(d,w) -> {
+                if(PhoneControlService.instance!=null) PhoneControlService.instance.search(target,terms);
                 else new AlertDialog.Builder(this).setTitle("Activar control de apps")
-                    .setMessage("Habilitá Aurora en Ajustes → Accesibilidad → Aplicaciones instaladas y después volvé a tocar Google Fotos o Galería Samsung. También podés usar Copiar y abrir.")
+                    .setMessage("Habilitá Jarvis en Ajustes → Accesibilidad → Aplicaciones instaladas y después volvé a tocar Google Fotos o Galería Samsung. También podés usar Copiar y abrir.")
                     .setPositiveButton("Abrir Ajustes",(a,b) -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))).setNegativeButton("Cancelar",null).show();
             }).show();
     }
@@ -144,7 +144,7 @@ public final class GalleryActivity extends Activity {
     }
     private void picker() {
         new AlertDialog.Builder(this).setTitle("Fotos de la nube")
-            .setMessage("Android abrirá su selector. Si Google Fotos está disponible como proveedor, elegilo en el menú del selector. Aurora solo podrá leer las imágenes que selecciones, no toda tu biblioteca. La disponibilidad depende de Android y Google Fotos; algunas fotos pueden necesitar descargarse.")
+            .setMessage("Android abrirá su selector. Si Google Fotos está disponible como proveedor, elegilo en el menú del selector. Jarvis solo podrá leer las imágenes que selecciones, no toda tu biblioteca. La disponibilidad depende de Android y Google Fotos; algunas fotos pueden necesitar descargarse.")
             .setNegativeButton("Cancelar",null).setPositiveButton("Elegir fotos",(d,w) -> {
                 try {
                     Intent intent;
