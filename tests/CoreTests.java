@@ -97,6 +97,23 @@ public final class CoreTests {
         equal("abrí WhatsApp",session.accept("abrí WhatsApp",71000));
         session.close();equal(false,session.active(71001));
         equal(null,session.accept("baja",71001));
+        SpeechAttempt attempt=new SpeechAttempt();int first=attempt.begin();
+        equal(true,attempt.current(first));
+        int reconnected=attempt.retry(first,11);equal(true,reconnected>first);
+        equal(false,attempt.current(first));equal(true,attempt.current(reconnected));
+        equal(-1,attempt.retry(reconnected,11));
+        equal(false,attempt.finish(first));equal(true,attempt.finish(reconnected));
+        equal(false,attempt.active());
+        int canceled=attempt.begin();attempt.cancel();equal(false,attempt.current(canceled));
+        equal(false,attempt.finish(canceled));equal(-1,attempt.retry(canceled,11));
+        int fresh=attempt.begin();equal(true,attempt.current(fresh));equal(true,attempt.retry(fresh,11)>fresh);
+        int silence=attempt.begin();equal(-1,attempt.retry(silence,7));
+        equal(true,VoiceErrors.describe(11).contains("desconectó"));
+        equal(false,VoiceErrors.describe(11).contains("idioma"));
+        equal(false,VoiceErrors.describe(11).contains("modelo"));
+        equal(true,VoiceErrors.describe(12).contains("idioma"));
+        equal(true,VoiceErrors.noSpeech(6));equal(true,VoiceErrors.noSpeech(7));
+        equal(false,VoiceErrors.noSpeech(11));equal(false,VoiceErrors.reconnect(9));
         System.out.println("CoreTests: "+checks+" comprobaciones correctas");
     }
 }

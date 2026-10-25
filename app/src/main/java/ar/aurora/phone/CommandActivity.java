@@ -36,6 +36,6 @@ public final class CommandActivity extends Activity {
     }
     @Override protected void onActivityResult(int code,int result,Intent data) {super.onActivityResult(code,result,data);voice.activityResult(code,result,data);}
     @Override public void onRequestPermissionsResult(int code,String[] names,int[] grants) {super.onRequestPermissionsResult(code,names,grants);voice.permission(code,grants);}
-    @Override protected void onPause() {voice.cancel();super.onPause();}
+    @Override protected void onPause() {voice.pause();super.onPause();}
     @Override protected void onDestroy() {voice.destroy();if(WakeVoiceService.instance!=null) WakeVoiceService.instance.resumeManual();super.onDestroy();}
 }

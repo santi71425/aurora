@@ -27,21 +27,22 @@ public final class WakeVoiceService extends Service {
     private final Handler main=new Handler(Looper.getMainLooper());
     private SpeechRecognizer recognizer;
     private boolean running,listening,ttsPaused,manualPaused;
-    private int failures;
+    private int failures,connection;
+    private boolean reconnecting;
     private final VoiceSession session=new VoiceSession();
     private final Runnable restart=() -> listen();
     private final Runnable sessionStatus=new Runnable() {
         public void run() {
             if(!running) return;
             int seconds=session.remainingSeconds(SystemClock.elapsedRealtime());
-            update(seconds>0?"Sesión activa · "+seconds+" s · hablá sin OK Jarvis":"Esperando OK Jarvis · reconocimiento local");
+            update(reconnecting?"Reconectando el servicio local de voz…":seconds>0?"Sesión activa · "+seconds+" s · hablá sin OK Jarvis":"Esperando OK Jarvis · reconocimiento local");
             main.postDelayed(this,1000);
         }
     };
     public static boolean available(android.content.Context c) {return Build.VERSION.SDK_INT>=31&&SpeechRecognizer.isOnDeviceRecognitionAvailable(c);}
     static Intent recognitionIntent() {
         return new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            .putExtra(RecognizerIntent.EXTRA_LANGUAGE,"es-ES").putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,3).putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS,false).putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE,true);
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE,java.util.Locale.getDefault().getLanguage().equals("es")?java.util.Locale.getDefault().toLanguageTag():"es-ES").putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,3).putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS,false).putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE,true);
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId) {
         if(intent!=null&&"STOP".equals(intent.getAction())) {stopListening();return START_NOT_STICKY;}
@@ -53,24 +54,33 @@ public final class WakeVoiceService extends Service {
         try {startForeground(ID,notification(),ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);}
         catch(RuntimeException denied) {running=false;instance=null;status="Android no permitió iniciar el micrófono. Activá OK Jarvis desde la app visible.";stopSelf();return START_NOT_STICKY;}
         try {
-            recognizer=SpeechRecognizer.createOnDeviceSpeechRecognizer(this);
+            connectRecognizer();
+            schedule(400);
+            main.post(sessionStatus);
+        } catch(RuntimeException failed) {update("No pude iniciar el reconocimiento local. Revisá el servicio de voz de Android.");shutdown();}
+        return START_NOT_STICKY;
+    }
+    private void connectRecognizer() {
+        releaseRecognizer();final int token=connection;
+        recognizer=SpeechRecognizer.createOnDeviceSpeechRecognizer(this);
             recognizer.setRecognitionListener(new RecognitionListener() {
-                public void onReadyForSpeech(Bundle b) { }
+                public void onReadyForSpeech(Bundle b) {if(token==connection) reconnecting=false;}
                 public void onBeginningOfSpeech() { }
                 public void onRmsChanged(float rms) { }
                 public void onBufferReceived(byte[] audio) { /* Never copy or store audio. */ }
                 public void onEndOfSpeech() { }
                 public void onError(int error) {
-                    if(!running||!listening) return;listening=false;
+                    if(token!=connection||!running||!listening) return;listening=false;
                     if(error==SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS||error==SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED||error==SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE) {
-                        update("Falta permiso o modelo local de español. Abrí Jarvis para prepararlo.");shutdown();return;
+                        update(VoiceErrors.describe(error));shutdown();return;
                     }
-                    if(error!=SpeechRecognizer.ERROR_NO_MATCH&&error!=SpeechRecognizer.ERROR_SPEECH_TIMEOUT) failures++;
-                    if(failures>=8) {update("El servicio de voz local falló varias veces. Reactivá OK Jarvis desde la app.");shutdown();return;}
+                    if(VoiceErrors.noSpeech(error)) failures=0;else failures++;
+                    if(failures>=3) {update(VoiceErrors.describe(error)+" No pude recuperar la conexión. Probá Mic con el dictado del teléfono.");shutdown();return;}
+                    if(!VoiceErrors.noSpeech(error)) {releaseRecognizer();reconnecting=true;}
                     schedule(error==SpeechRecognizer.ERROR_NO_MATCH||error==SpeechRecognizer.ERROR_SPEECH_TIMEOUT?600:1800);
                 }
                 public void onResults(Bundle b) {
-                    if(!running||!listening) return;listening=false;failures=0;
+                    if(token!=connection||!running||!listening) return;listening=false;failures=0;
                     ArrayList<String> texts=b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     String command=null;
                     if(texts!=null) {
@@ -87,22 +97,22 @@ public final class WakeVoiceService extends Service {
                 public void onPartialResults(Bundle b) { }
                 public void onEvent(int type,Bundle b) { }
             });
-            schedule(400);
-            main.post(sessionStatus);
-        } catch(RuntimeException failed) {update("No pude iniciar el reconocimiento local. Revisá el servicio de voz de Android.");shutdown();}
-        return START_NOT_STICKY;
+    }
+    private void releaseRecognizer() {
+        connection++;SpeechRecognizer old=recognizer;recognizer=null;
+        if(old!=null) {try {old.cancel();}catch(RuntimeException ignored) { }try {old.destroy();}catch(RuntimeException ignored) { }}
     }
     private void listen() {
-        if(!running||ttsPaused||manualPaused||listening||recognizer==null) return;
-        try {listening=true;recognizer.startListening(recognitionIntent());}
-        catch(RuntimeException failed) {listening=false;failures++;if(failures>=8) shutdown();else schedule(1800);}
+        if(!running||ttsPaused||manualPaused||listening) return;
+        try {if(recognizer==null) {reconnecting=true;connectRecognizer();}listening=true;recognizer.startListening(recognitionIntent());}
+        catch(RuntimeException failed) {listening=false;releaseRecognizer();failures++;if(failures>=3) {update("No pude conectar el reconocedor local. Probá Mic con el dictado del teléfono.");shutdown();}else schedule(1800);}
     }
     private void schedule(long delay) {main.removeCallbacks(restart);if(running&&!ttsPaused&&!manualPaused) main.postDelayed(restart,delay);}
     public void pauseForSpeech() {ttsPaused=true;pause();}
     public void resumeAfterSpeech() {ttsPaused=false;schedule(700);}
     public void pauseManual() {manualPaused=true;pause();}
     public void resumeManual() {manualPaused=false;schedule(700);}
-    private void pause() {main.removeCallbacks(restart);listening=false;if(recognizer!=null) recognizer.cancel();}
+    private void pause() {main.removeCallbacks(restart);listening=false;reconnecting=false;releaseRecognizer();}
     public void stopListening() {status="OK Jarvis apagado";shutdown();}
     private void shutdown() {running=false;session.close();main.removeCallbacks(sessionStatus);pause();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
     private void update(String value) {
@@ -116,6 +126,6 @@ public final class WakeVoiceService extends Service {
             .setOngoing(true).setOnlyAlertOnce(true).setCategory(Notification.CATEGORY_SERVICE).addAction(new Notification.Action.Builder(null,"Apagar",stop).build()).build();
     }
     @Override public void onTaskRemoved(Intent intent) {stopListening();}
-    @Override public void onDestroy() {running=false;main.removeCallbacksAndMessages(null);if(recognizer!=null) {recognizer.cancel();recognizer.destroy();}if(instance==this) instance=null;super.onDestroy();}
+    @Override public void onDestroy() {running=false;main.removeCallbacksAndMessages(null);releaseRecognizer();if(instance==this) instance=null;super.onDestroy();}
     @Override public IBinder onBind(Intent intent) {return null;}
 }

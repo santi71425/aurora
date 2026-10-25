@@ -8,7 +8,7 @@ def adb(*args,check=True):
     return subprocess.run(['adb',*args],text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=check).stdout
 
 adb('wait-for-device')
-adb('install','-r',str(DIST/'Jarvis-0.3.1.apk'))
+adb('install','-r',str(DIST/'Jarvis-0.3.2.apk'))
 adb('install','-r',str(DIST/'Jarvis-tests.apk'))
 adb('shell','pm','grant','ar.aurora.phone','android.permission.READ_MEDIA_IMAGES')
 adb('shell','pm','grant','ar.aurora.phone','android.permission.READ_MEDIA_VIDEO')

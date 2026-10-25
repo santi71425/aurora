@@ -24,7 +24,7 @@ python3 build.py
 
 Solo comprobaciones de lógica sin SDK: `python3 build.py --test-only`.
 
-El workflow de Actions genera `Jarvis-0.3.1.apk` y ejecuta comprobaciones de interfaz en Android 15. Las claves de prueba son temporales: puede ser necesario desinstalar la compilación anterior. No se suben claves privadas como artefactos.
+El workflow de Actions genera `Jarvis-0.3.2.apk` y ejecuta comprobaciones de interfaz en Android 15. Las claves de prueba son temporales: puede ser necesario desinstalar la compilación anterior. No se suben claves privadas como artefactos.
 
 Las pruebas automatizadas no validan micrófono real, español instalado, voz, bloqueo seguro o interfaces reales de apps de terceros en el Samsung del usuario.
 

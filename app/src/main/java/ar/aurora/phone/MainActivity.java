@@ -36,7 +36,7 @@ public final class MainActivity extends Activity implements Conversation.Listene
         public void run() {
             boolean listening=WakeVoiceService.instance!=null;
             wake.setText(listening?"Apagar escucha continua":"Activar «OK Jarvis»");
-            state.setText(voice!=null&&voice.listening()?"● Te escucho · dictado manual":listening?"● "+WakeVoiceService.status:PhoneControlService.instance!=null?"● Control listo · "+WakeVoiceService.status:"○ Configurá el control del teléfono");
+            state.setText(voice!=null&&voice.listening()?"● "+voice.status():listening?"● "+WakeVoiceService.status:PhoneControlService.instance!=null?"● Control listo · "+WakeVoiceService.status:"○ Configurá el control del teléfono");
             main.postDelayed(this,1000);
         }
     };
@@ -97,15 +97,26 @@ public final class MainActivity extends Activity implements Conversation.Listene
         PhoneActions.dispatch(this,CommandParser.parse(text),origin,false);
     }
     private void settings() {
-        String[] labels={(VoiceOutput.enabled(this)?"✓ ":"")+"Voz de respuesta",(getSharedPreferences("jarvis",0).getBoolean("panel",false)?"✓ ":"")+"Micrófono flotante","Configurar Accesibilidad","Preparar reconocimiento local","Ayuda y límites","Borrar conversación"};
+        String[] labels={(VoiceOutput.enabled(this)?"✓ ":"")+"Voz de respuesta",(getSharedPreferences("jarvis",0).getBoolean("panel",false)?"✓ ":"")+"Micrófono flotante","Configurar Accesibilidad","Motor de dictado","Preparar reconocimiento local","Ayuda y límites","Borrar conversación"};
         new AlertDialog.Builder(this).setTitle("Jarvis").setItems(labels,(d,w) -> {
             if(w==0) {VoiceOutput.enabled(this,!VoiceOutput.enabled(this));if(VoiceOutput.enabled(this)) Conversation.reply(this,"Voz activada.");}
             else if(w==1) {if(PhoneControlService.instance==null) PhoneActions.requireControl(this);else PhoneControlService.instance.panel(!getSharedPreferences("jarvis",0).getBoolean("panel",false));}
             else if(w==2) PhoneActions.requireControl(this);
-            else if(w==3) model();
-            else if(w==4) help();
+            else if(w==3) dictation();
+            else if(w==4) model();
+            else if(w==5) help();
             else Conversation.clear();
         }).setNegativeButton("Cerrar",null).show();
+    }
+    private void dictation() {
+        String mode=getSharedPreferences("jarvis",0).getString("manualMode","auto");
+        final String[] selected={mode};
+        new AlertDialog.Builder(this).setTitle("Motor de dictado manual")
+            .setSingleChoiceItems(new String[]{"Automático: local con recuperación","Dictado del teléfono","Solo reconocimiento local"},mode.equals("system")?1:mode.equals("local")?2:0,(d,w) -> selected[0]=new String[]{"auto","system","local"}[w])
+            .setNegativeButton("Cancelar",null).setPositiveButton("Guardar",(d,w) -> {
+                getSharedPreferences("jarvis",0).edit().putString("manualMode",selected[0]).apply();
+                Conversation.reply(this,selected[0].equals("system")?"Mic usará el dictado del teléfono. Antes de usarlo te pediré consentimiento si todavía no lo diste. OK Jarvis sigue usando solo reconocimiento local.":"Motor de dictado guardado.");
+            }).show();
     }
     private void toggleWake() {
         if(WakeVoiceService.instance!=null) {WakeVoiceService.instance.stopListening();Conversation.reply(this,"OK Jarvis apagado.");return;}
@@ -132,7 +143,7 @@ public final class MainActivity extends Activity implements Conversation.Listene
             .setNegativeButton("Cerrar",null).setPositiveButton("Abrir ajustes de voz",(d,w) -> {try {startActivity(new Intent("android.settings.VOICE_INPUT_SETTINGS"));}catch(RuntimeException e) {Conversation.reply(this,"Buscá Reconocimiento de voz en Ajustes del teléfono.");}}).show();
     }
     private void help() {
-        new AlertDialog.Builder(this).setTitle("Jarvis 0.3.1 · Tu teléfono, a tu voz")
+        new AlertDialog.Builder(this).setTitle("Jarvis 0.3.2 · Tu teléfono, a tu voz")
             .setMessage("ÓRDENES\nOK Jarvis, bajá / subí / atrás / inicio / abrí WhatsApp / abrí Google Fotos / bajá el volumen / mostrame capturas de pantalla.\n\nPodés decir toca Nombre del botón o escribe: Texto. Esas acciones requieren confirmación y solo actúan en un control inequívoco o un campo de texto seleccionado. No se escriben contraseñas.\n\nDESBLOQUEO\nJarvis puede pedir a Android que muestre la autenticación. Nunca guarda ni introduce tu PIN y no salta el bloqueo. La activación por voz con pantalla apagada depende de Android, del servicio de voz y de las restricciones de batería de Samsung.\n\nVOZ\nOK Jarvis requiere reconocimiento local y un servicio de micrófono visible en Android. No graba archivos de audio, no envía audio ambiente a un reconocedor remoto y no se inicia al reiniciar el teléfono. El dictado manual puede usar el servicio del teléfono con tu consentimiento. La voz de respuesta usa el sintetizador de Android. No es un modelo conversacional general.\n\nFOTOS\nBusca metadatos locales o usa Google Fotos/Galería Samsung para contenido visual. No importa toda la nube. Los duplicados requieren selección y confirmación de Android; borrarlos puede ser permanente.\n\nINSTALACIÓN\nSi Android restringe Accesibilidad: Ajustes → Aplicaciones → Jarvis → ⋮ → Permitir ajustes restringidos, si aparece. Después activá Jarvis en Accesibilidad.\n\nEl control está limitado por los permisos y por las interfaces de las apps. Para quitarlo, apagá la escucha, desactivá Accesibilidad y desinstalá Jarvis.")
             .setPositiveButton("Cerrar",null).show();
     }
@@ -144,6 +155,6 @@ public final class MainActivity extends Activity implements Conversation.Listene
     @Override protected void onActivityResult(int code,int result,Intent data) {super.onActivityResult(code,result,data);voice.activityResult(code,result,data);}
     @Override protected void onSaveInstanceState(Bundle state) {state.putString("draft",input.getText().toString());super.onSaveInstanceState(state);}
     @Override protected void onResume() {super.onResume();Conversation.listener=this;changed();main.post(refresh);}
-    @Override protected void onPause() {main.removeCallbacks(refresh);voice.cancel();if(Conversation.listener==this) Conversation.listener=null;super.onPause();}
+    @Override protected void onPause() {main.removeCallbacks(refresh);voice.pause();if(Conversation.listener==this) Conversation.listener=null;super.onPause();}
     @Override protected void onDestroy() {main.removeCallbacksAndMessages(null);voice.destroy();if(modelRequester!=null) modelRequester.destroy();if(Conversation.listener==this) Conversation.listener=null;super.onDestroy();}
 }
