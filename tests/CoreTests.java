@@ -49,6 +49,8 @@ public final class CoreTests {
         for(String s:new String[]{"desliza arriba 21 veces","desliza abajo cero veces","no deslices arriba","reels cada mil segundos","reels cada 6 minutos"}) type(s,CommandParser.Type.UNKNOWN);
         equal(10,CommandParser.parse("reels cada diez segundos").seconds);
         equal(20,CommandParser.parse("¿Podés pasar los reels cada veinte segundos?").seconds);
+        type("Quiero que pases los reels cada veinte segundos",CommandParser.Type.REELS);
+        type("Quiero que deslices hacia abajo",CommandParser.Type.SCROLL);
         equal("down",CommandParser.parse("pasá los reels hacia abajo cada 10 segundos").direction);
         for(String s:new String[]{"capturas de pantalla","Mostrame videos grandes","¿Podés mostrarme capturas de pantalla?","Encuentra fotos de perros en Google Fotos","busca fotos con mujeres en Google Fotos","Buscame fotos de Madrid en la galería Samsung","fotos de enero de 2026","Quiero que me muestres fotos de perros","Me gustaría ver videos grandes","Encuéntrame fotos de Madrid"}) type(s,CommandParser.Type.GALLERY);
         type("reels cada 1073741825 minutos",CommandParser.Type.UNKNOWN);

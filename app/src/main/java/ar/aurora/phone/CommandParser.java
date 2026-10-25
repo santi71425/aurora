@@ -91,7 +91,7 @@ public final class CommandParser {
         if(n.matches("(?:abre|abri|abrir) (?:google fotos|google photos|la galeria|galeria samsung)")) {
             Command c=new Command(Type.GALLERY,"","",20); c.target=target(n); return c;
         }
-        Matcher swipe=p("^(?:(?:desliza|deslizar|deslizate|desplaza|desplazate|mueve|move)(?: la pantalla)?|(?:haz|hace) (?:scroll|un deslizamiento)|scroll)(?: hacia| para)?(?: la)? (arriba|abajo|izquierda|derecha)(?: (\\w+) veces)?(?: en (?:la )?(instagram|google fotos|google photos|galeria|galeria samsung))?$").matcher(n);
+        Matcher swipe=p("^(?:(?:desliza|deslizar|deslizate|deslices|desplaza|desplazate|desplaces|mueve|move|muevas)(?: la pantalla)?|(?:haz|hace) (?:scroll|un deslizamiento)|scroll)(?: hacia| para)?(?: la)? (arriba|abajo|izquierda|derecha)(?: (\\w+) veces)?(?: en (?:la )?(instagram|google fotos|google photos|galeria|galeria samsung))?$").matcher(n);
         if(swipe.matches()) {
             int count=swipe.group(2)==null?1:number(swipe.group(2));
             if(count<1||count>20) return unknown();
@@ -110,7 +110,7 @@ public final class CommandParser {
             } else if(rest.contains("cada")) return unknown();
             String direction=rest.contains("hacia abajo")?"down":"up";
             rest=rest.replaceAll("\\b(?:hacia|para) (?:arriba|abajo)\\b","").replaceAll("\\b(?:en|de) instagram\\b","").replaceAll("\\b(?:automaticamente|automaticos|automatico|solos)\\b","").trim().replaceAll("\\s+"," ");
-            if(rest.matches("(?:(?:pasa|pasar|desliza|deslizar|avanza|avanzar|inicia|iniciar|activa|activar|reproduce|reproducir|pon|pone|poneme) )?(?:los )?reels")) {
+            if(rest.matches("(?:(?:pasa|pasar|pases|desliza|deslizar|deslices|avanza|avanzar|avances|inicia|iniciar|inicies|activa|activar|actives|reproduce|reproducir|reproduzcas|pon|pone|poneme) )?(?:los )?reels")) {
                 Command c=new Command(Type.REELS,"","",seconds); c.direction=direction; return c;
             }
             return null;
