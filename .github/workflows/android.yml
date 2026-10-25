@@ -479,7 +479,7 @@ jobs:
       - name: Preparar SDK oficial de Android
         run: '"${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"'
       - name: Pruebas, compilación y verificación de firma
-        run: python3 build.py
+        run: sed -i "s/'-bootclasspath'/'-classpath'/g" build.py && python3 build.py
       - name: Guardar instalador
         uses: actions/upload-artifact@v4
         with:
