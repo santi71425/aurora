@@ -31,7 +31,17 @@ public final class SmokeRunner extends Instrumentation {
         runOnMainSync(() -> {try {task.run();}catch(Throwable error) {failure[0]=error;}});
         if(failure[0]!=null) throw new AssertionError("Error de interfaz",failure[0]);
     }
+    private void waitActive(Activity activity) {
+        final boolean[] active={false};
+        for(int attempt=0;attempt<80;attempt++) {
+            waitForIdleSync();ui(() -> active[0]=activity.hasWindowFocus()&&!activity.isFinishing());
+            if(active[0]) return;
+            try {Thread.sleep(100);}catch(InterruptedException interrupted) {throw new AssertionError(interrupted);}
+        }
+        throw new AssertionError("La actividad no volvió al primer plano antes de la interacción");
+    }
     private void command(Activity main,String text) {
+        waitActive(main);
         ui(() -> {
             View decor=main.getWindow().getDecorView();
             EditText input=(EditText)find(decor,EditText.class,null);
@@ -104,7 +114,7 @@ public final class SmokeRunner extends Instrumentation {
             }
             if(!matched[0]) throw new AssertionError("El filtro no encontró la captura de prueba");
             getTargetContext().getContentResolver().delete(fixture,null,null);fixture=null;
-            ui(() -> {capture.finish();});waitForIdleSync();
+            ui(() -> {capture.finish();});waitActive(main);
             ui(() -> {
                 Button fresh=(Button)find(main.getWindow().getDecorView(),Button.class,"+");
                 if(fresh==null) throw new AssertionError("Falta nueva conversación");fresh.performClick();
