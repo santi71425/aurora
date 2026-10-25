@@ -78,6 +78,7 @@ public final class PhoneControlService extends AccessibilityService {
     private void complete(String value) {cancelTask();setStatus(value);Conversation.reply(this,value);}
     private void begin(String pkg,int operation,String text,String move,int count,boolean launch) {
         cancelTask();
+        if(instance!=this) {complete("El control de Jarvis está desconectado.");return;}
         if(locked()) {complete("Primero confirmá el desbloqueo con Android.");return;}
         if(pkg==null||pkg.isEmpty()) {complete("No identifiqué la app. Probá OK Jarvis desde la pantalla que querés controlar.");return;}
         target=pkg;mode=operation;argument=text;direction=move;remaining=count;stage=0;
@@ -108,9 +109,13 @@ public final class PhoneControlService extends AccessibilityService {
         List<AccessibilityNodeInfo> nodes=new ArrayList<>();nodes.add(root);
         try {
             if(!target.equals(str(root.getPackageName()))) {complete("La app activa cambió. No ejecuté la acción en otra pantalla.");return;}
+            if(mode==SCROLL) {
+                Rect bounds=new Rect();root.getBoundsInScreen(bounds);
+                if(!gesture(bounds)) {complete("Android rechazó el gesto.");return;}
+                remaining--;nextAction=now+850;if(remaining<=0) complete("Gesto completado.");return;
+            }
             for(int i=0;i<nodes.size();i++) {
                 AccessibilityNodeInfo node=nodes.get(i);
-                if(node.isVisibleToUser()&&node.isPassword()) {complete("No manipulo campos de contraseña ni pantallas de autenticación.");return;}
                 for(int j=0;j<node.getChildCount();j++) {
                     if(nodes.size()>=1000) {complete("No pude verificar la pantalla completa. Elegí el control manualmente.");return;}
                     AccessibilityNodeInfo child=node.getChild(j);if(child!=null) nodes.add(child);
@@ -119,10 +124,6 @@ public final class PhoneControlService extends AccessibilityService {
             if(mode==SEARCH) {searchStep(nodes);return;}
             if(mode==TAP) {tapStep(nodes);return;}
             if(mode==TYPE) {typeStep(root);return;}
-            Rect bounds=new Rect();root.getBoundsInScreen(bounds);
-            if(!gesture(bounds)) {complete("Android rechazó el gesto.");return;}
-            remaining--;nextAction=now+850;
-            if(remaining<=0) complete("Gesto completado.");
         } finally {for(AccessibilityNodeInfo node:nodes) node.recycle();}
     }
     private boolean gesture(Rect b) {
@@ -200,6 +201,7 @@ public final class PhoneControlService extends AccessibilityService {
         boolean success=code!=0&&performGlobalAction(code);Conversation.reply(this,success?"Listo.":"Android no permitió esa acción.");
     }
     public void spoken(String text) {
+        cancelTask();
         CommandParser.Command c=CommandParser.parse(text);Conversation.user(text);
         if(c.type==CommandParser.Type.STOP) {stop();Conversation.reply(this,"Automatización detenida.");return;}
         if(c.type==CommandParser.Type.HELP) {Conversation.reply(this,c.action.equals("hello")?"Hola, soy Jarvis. ¿Qué querés hacer?":"Puedo abrir apps, bajar o subir la pantalla, volver, ir al inicio, ajustar el volumen y ayudarte con tus fotos. Para tocar controles o escribir texto te pediré confirmación.");return;}

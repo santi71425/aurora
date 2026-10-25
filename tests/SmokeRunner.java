@@ -26,8 +26,13 @@ public final class SmokeRunner extends Instrumentation {
         }
         return null;
     }
+    private void ui(Runnable task) {
+        final Throwable[] failure={null};
+        runOnMainSync(() -> {try {task.run();}catch(Throwable error) {failure[0]=error;}});
+        if(failure[0]!=null) throw new AssertionError("Error de interfaz",failure[0]);
+    }
     private void command(Activity main,String text) {
-        runOnMainSync(() -> {
+        ui(() -> {
             View decor=main.getWindow().getDecorView();
             EditText input=(EditText)find(decor,EditText.class,null);
             Button go=(Button)find(decor,Button.class,"↑");
@@ -40,9 +45,9 @@ public final class SmokeRunner extends Instrumentation {
         Bundle result=new Bundle();
         try {
             Activity main=startActivitySync(new Intent().setClassName("ar.aurora.phone","ar.aurora.phone.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            waitForIdleSync();
-            runOnMainSync(() -> { if(find(main.getWindow().getDecorView(),TextView.class,"Jarvis")==null) throw new AssertionError("No abrió Jarvis"); });
-            runOnMainSync(() -> {
+            Thread.sleep(400);waitForIdleSync();
+            ui(() -> { if(find(main.getWindow().getDecorView(),TextView.class,"Jarvis")==null) throw new AssertionError("No abrió Jarvis"); });
+            ui(() -> {
                 Button send=(Button)find(main.getWindow().getDecorView(),Button.class,"↑");
                 Button wake=(Button)find(main.getWindow().getDecorView(),Button.class,"OK Jarvis");
                 if(send==null||wake==null) throw new AssertionError("Faltan controles de la conversación o de activación");
@@ -52,22 +57,22 @@ public final class SmokeRunner extends Instrumentation {
             Class<?> wakeService=getTargetContext().getClassLoader().loadClass("ar.aurora.phone.WakeVoiceService");
             if(wakeService.getField("instance").get(null)!=null) throw new AssertionError("El micrófono continuo se inició sin activación explícita");
             command(main,"detener");
-            runOnMainSync(() -> { if(find(main.getWindow().getDecorView(),TextView.class,"Automatización detenida")==null) throw new AssertionError("No funciona Detener"); });
+            ui(() -> { if(find(main.getWindow().getDecorView(),TextView.class,"Automatización detenida")==null) throw new AssertionError("No funciona Detener"); });
             command(main,"hola");
-            runOnMainSync(() -> {if(find(main.getWindow().getDecorView(),TextView.class,"Hola, soy Jarvis")==null) throw new AssertionError("Falta respuesta de conversación");});
+            ui(() -> {if(find(main.getWindow().getDecorView(),TextView.class,"Hola, soy Jarvis")==null) throw new AssertionError("Falta respuesta de conversación");});
             command(main,"deja de escuchar");
-            runOnMainSync(() -> {if(find(main.getWindow().getDecorView(),TextView.class,"OK Jarvis apagado")==null) throw new AssertionError("No funciona apagar escucha");});
+            ui(() -> {if(find(main.getWindow().getDecorView(),TextView.class,"OK Jarvis apagado")==null) throw new AssertionError("No funciona apagar escucha");});
             ActivityMonitor whatsapp=addMonitor("ar.aurora.phone.WhatsAppActivity",null,false);
             command(main,"Escribile a Mom por WhatsApp: Te amo");
             Activity message=waitForMonitorWithTimeout(whatsapp,5000); removeMonitor(whatsapp);
             if(message==null) throw new AssertionError("No abrió revisión WhatsApp");
-            runOnMainSync(() -> { if(find(message.getWindow().getDecorView(),TextView.class,"Te amo")==null) throw new AssertionError("Mensaje incorrecto"); message.finish(); });
+            ui(() -> { if(find(message.getWindow().getDecorView(),TextView.class,"Te amo")==null) throw new AssertionError("Mensaje incorrecto"); message.finish(); });
             waitForIdleSync();
             ActivityMonitor photos=addMonitor("ar.aurora.phone.DuplicatesActivity",null,false);
             command(main,"Buscá fotos duplicadas");
             Activity gallery=waitForMonitorWithTimeout(photos,5000); removeMonitor(photos);
             if(gallery==null) throw new AssertionError("No abrió revisión de fotos");
-            runOnMainSync(() -> {
+            ui(() -> {
                 Button button=(Button)find(gallery.getWindow().getDecorView(),Button.class,"Revisar selección (0)");
                 if(button==null||button.isEnabled()) throw new AssertionError("El borrado debe estar deshabilitado sin selección");
                 gallery.finish();
@@ -77,7 +82,7 @@ public final class SmokeRunner extends Instrumentation {
             command(main,"Mostrame fotos de perros");
             Activity search=waitForMonitorWithTimeout(searches,5000);removeMonitor(searches);
             if(search==null) throw new AssertionError("No abrió búsqueda flexible");
-            runOnMainSync(() -> {if(find(search.getWindow().getDecorView(),Button.class,"Google Fotos")==null) throw new AssertionError("Falta búsqueda en Google Fotos");search.finish();});
+            ui(() -> {if(find(search.getWindow().getDecorView(),Button.class,"Google Fotos")==null) throw new AssertionError("Falta búsqueda en Google Fotos");search.finish();});
             waitForIdleSync();
             ContentValues values=new ContentValues();values.put(MediaStore.Images.Media.DISPLAY_NAME,"AuroraSmokeScreenshot.png");
             values.put(MediaStore.Images.Media.MIME_TYPE,"image/png");values.put(MediaStore.Images.Media.RELATIVE_PATH,"Pictures/Screenshots");values.put(MediaStore.Images.Media.IS_PENDING,1);
@@ -94,13 +99,13 @@ public final class SmokeRunner extends Instrumentation {
             if(capture==null) throw new AssertionError("No abrió filtro de capturas");
             final boolean[] matched={false};
             for(int i=0;i<40&&!matched[0];i++) {
-                waitForIdleSync();runOnMainSync(() -> matched[0]=find(capture.getWindow().getDecorView(),TextView.class,"AuroraSmokeScreenshot.png")!=null);
+                waitForIdleSync();ui(() -> matched[0]=find(capture.getWindow().getDecorView(),TextView.class,"AuroraSmokeScreenshot.png")!=null);
                 if(!matched[0]) Thread.sleep(250);
             }
             if(!matched[0]) throw new AssertionError("El filtro no encontró la captura de prueba");
             getTargetContext().getContentResolver().delete(fixture,null,null);fixture=null;
-            runOnMainSync(() -> {capture.finish();});waitForIdleSync();
-            runOnMainSync(() -> {
+            ui(() -> {capture.finish();});waitForIdleSync();
+            ui(() -> {
                 Button fresh=(Button)find(main.getWindow().getDecorView(),Button.class,"+");
                 if(fresh==null) throw new AssertionError("Falta nueva conversación");fresh.performClick();
                 if(find(main.getWindow().getDecorView(),TextView.class,"¿Qué hacemos hoy?")==null) throw new AssertionError("No limpió la conversación");
@@ -110,7 +115,7 @@ public final class SmokeRunner extends Instrumentation {
             finish(Activity.RESULT_OK,result);
         } catch(Throwable error) {
             if(fixture!=null) {try {getTargetContext().getContentResolver().delete(fixture,null,null);}catch(RuntimeException ignored) {}}
-            result.putString("stream","JARVIS_SMOKE_FAILED: "+error.toString()+"\n");
+            result.putString("stream","JARVIS_SMOKE_FAILED: "+android.util.Log.getStackTraceString(error)+"\n");
             finish(Activity.RESULT_CANCELED,result);
         }
     }

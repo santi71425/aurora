@@ -41,7 +41,7 @@ public final class MainActivity extends Activity implements Conversation.Listene
         }
     };
     @Override public void onCreate(Bundle saved) {
-        super.onCreate(saved);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        super.onCreate(saved);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE|WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         LinearLayout root=AppUi.column(this);setContentView(root);AppUi.insets(this,root);
         LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);
         TextView logo=AppUi.text(this,"J",18,AppUi.BG);logo.setTypeface(Typeface.DEFAULT,Typeface.BOLD);logo.setGravity(Gravity.CENTER);logo.setBackground(AppUi.background(this,AppUi.TEXT,24));
