@@ -32,8 +32,8 @@ jobs:
         with:
           name: Jarvis-APK
           path: |
-            dist/Jarvis-0.3.apk
-            dist/Jarvis-0.3.apk.sha256
+            dist/Jarvis-0.3.1.apk
+            dist/Jarvis-0.3.1.apk.sha256
             dist/build-info.json
           if-no-files-found: error
           retention-days: 30

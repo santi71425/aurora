@@ -1,14 +1,14 @@
-# Jarvis 0.3 para Android
+# Jarvis 0.3.1 para Android
 
 Interfaz nativa de conversación con tema oscuro, respuestas por voz y órdenes de control del teléfono. Reemplaza Aurora. Se eliminó la automatización de Instagram/Reels: no hay intervalos ni deslizamientos automáticos por duración.
 
 ## Instalar y activar
 
-1. En Actions descargá el artefacto **Jarvis-APK**, extraé el ZIP y abrí **Jarvis-0.3.apk**. **Desinstalá Aurora/Jarvis anterior primero**, porque esta compilación de prueba tiene una firma nueva. No se eliminan tus fotos o contactos al desinstalar; sí se reinician los permisos de la app.
+1. En Actions descargá el artefacto **Jarvis-APK**, extraé el ZIP y abrí **Jarvis-0.3.1.apk**. **Desinstalá Aurora/Jarvis anterior primero**, porque esta compilación de prueba tiene una firma nueva. No se eliminan tus fotos o contactos al desinstalar; sí se reinician los permisos de la app.
 2. En Jarvis abrí **⋮ → Configurar Accesibilidad** y activá **Jarvis · Control del teléfono**. Ahora el permiso cubre controles en distintas apps, no solo tres apps concretas. Si Android muestra Ajuste restringido, revisá Ajustes → Aplicaciones → Jarvis → ⋮ → Permitir ajustes restringidos, si tu versión ofrece esa opción.
 3. Para que hable, dejá activada **⋮ → Voz de respuesta**. Usa el sintetizador y las voces de Android; no clona voces de personajes o personas. Prefiere una voz local en español. Si faltan voces o un sintetizador compatible, seguirá mostrando texto.
 4. Para manos libres, tocá **Activar «OK Jarvis»**, leé la explicación y habilitá micrófono y, si querés ver el control en la cortina, notificaciones. **Se activa desde la app visible**, no automáticamente al instalar o reiniciar.
-5. Decí **«OK Jarvis, bajá»**. También podés decir solo **«OK Jarvis»** y luego una orden dentro de 10 segundos.
+5. Decí **«OK Jarvis, bajá»**. También podés decir solo **«OK Jarvis»** y luego varias órdenes durante una sesión de 30 segundos. Cada orden reconocida renueva los 30 segundos.
 
 El APK es un prototipo firmado en CI, no una app revisada por Google Play. El nombre del repositorio y el paquete interno se mantienen para continuar el proyecto; el nombre e interfaz visibles son Jarvis.
 
@@ -18,7 +18,7 @@ La escucha requiere **reconocimiento local compatible de Android (API 31+) y un 
 
 El servicio muestra una notificación de **micrófono activo** y el indicador de privacidad de Android. Consume batería: usa sesiones sucesivas del reconocedor de Android, no un detector de palabras de bajo consumo integrado en el hardware. Android, el proveedor de voz y las restricciones de batería de Samsung pueden interrumpirlo, particularmente con pantalla apagada o bloqueada. No se garantiza una activación permanente como la de un asistente integrado del sistema.
 
-Solo acepta la frase de activación al inicio del segmento reconocido. No ejecuta menciones de «OK Jarvis» dentro de otras frases. La detección no identifica biométricamente quién habla. Las menciones «OK», «okay», «okey», «oye» o «hey Jarvis» se aceptan. Solo se usan resultados finales; los resultados parciales no ejecutan órdenes. Si se activa sin orden, hay una ventana de 10 segundos para la siguiente frase.
+Fuera de una sesión, solo acepta la frase de activación al inicio del segmento reconocido. No ejecuta menciones de «OK Jarvis» dentro de otras frases. La detección no identifica biométricamente quién habla. Las menciones «OK», «okay», «okey», «oye» o «hey Jarvis» se aceptan. Solo se usan resultados finales; los resultados parciales no ejecutan órdenes. La frase de activación abre una sesión de 30 segundos, con o sin una orden en la misma frase. Durante la sesión acepta varias órdenes sin repetir el nombre y cada orden válida reinicia el plazo. Las frases no reconocidas no prolongan la sesión. Al agotarse el plazo vuelve a esperar la frase de activación; el micrófono sigue activo para detectarla. La notificación y la app muestran la cuenta atrás.
 
 Pausa la escucha mientras sintetiza una respuesta o se abre el dictado/revisión manual, para no ejecutar sus propias respuestas. Podés apagarla desde el botón inferior, la notificación, el control flotante o diciendo **«OK Jarvis, dejá de escuchar»**. Se apaga al quitar la tarea de la app; no tiene receptor de arranque automático.
 

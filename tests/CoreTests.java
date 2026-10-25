@@ -8,7 +8,7 @@ import java.time.LocalDate;
 
 public final class CoreTests {
     private static int checks;
-    private static void equal(Object a,Object b) { checks++; if(!a.equals(b)) throw new AssertionError("Expected "+a+"; got "+b); }
+    private static void equal(Object a,Object b) { checks++; if(!java.util.Objects.equals(a,b)) throw new AssertionError("Expected "+a+"; got "+b); }
     private static void type(String s,CommandParser.Type t) { equal(t,CommandParser.parse(s).type); }
     private static void message(String s,String name,String content) {
         CommandParser.Command c=CommandParser.parse(s); equal(CommandParser.Type.WHATSAPP,c.type); equal(name,c.contact); equal(content,c.message);
@@ -83,6 +83,20 @@ public final class CoreTests {
         equal("bajá",WakePhrase.parse("OK Jarvis, bajá").command);equal("",WakePhrase.parse("oye Jarvis").command);
         for(String phrase:new String[]{"Jarvis","bajá","no digas ok Jarvis baja","estoy hablando de ok jarvis","ok jarvisito baja","abre WhatsApp", ""}) equal(false,WakePhrase.parse(phrase).detected);
         equal(false,WakePhrase.parse(null).detected);
+        VoiceSession session=new VoiceSession();
+        equal(null,session.accept("bajá",1000));
+        equal("bajá",session.accept("OK Jarvis, bajá",2000));
+        equal(30,session.remainingSeconds(2000));
+        equal("atrás",session.accept("atrás",31999));
+        equal(30,session.remainingSeconds(31999));
+        equal(null,session.accept("conversación sin orden",40000));
+        equal(22,session.remainingSeconds(40000));
+        equal(null,session.accept("inicio",61999));
+        equal(false,session.active(61999));
+        equal("",session.accept("OK Jarvis",70000));
+        equal("abrí WhatsApp",session.accept("abrí WhatsApp",71000));
+        session.close();equal(false,session.active(71001));
+        equal(null,session.accept("baja",71001));
         System.out.println("CoreTests: "+checks+" comprobaciones correctas");
     }
 }

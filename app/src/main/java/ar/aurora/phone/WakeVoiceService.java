@@ -28,8 +28,16 @@ public final class WakeVoiceService extends Service {
     private SpeechRecognizer recognizer;
     private boolean running,listening,ttsPaused,manualPaused;
     private int failures;
-    private long awaitingCommand;
+    private final VoiceSession session=new VoiceSession();
     private final Runnable restart=() -> listen();
+    private final Runnable sessionStatus=new Runnable() {
+        public void run() {
+            if(!running) return;
+            int seconds=session.remainingSeconds(SystemClock.elapsedRealtime());
+            update(seconds>0?"Sesión activa · "+seconds+" s · hablá sin OK Jarvis":"Esperando OK Jarvis · reconocimiento local");
+            main.postDelayed(this,1000);
+        }
+    };
     public static boolean available(android.content.Context c) {return Build.VERSION.SDK_INT>=31&&SpeechRecognizer.isOnDeviceRecognitionAvailable(c);}
     static Intent recognitionIntent() {
         return new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -47,7 +55,7 @@ public final class WakeVoiceService extends Service {
         try {
             recognizer=SpeechRecognizer.createOnDeviceSpeechRecognizer(this);
             recognizer.setRecognitionListener(new RecognitionListener() {
-                public void onReadyForSpeech(Bundle b) {update(awaitingCommand>SystemClock.elapsedRealtime()?"Te escucho…":"Esperando OK Jarvis · reconocimiento local");}
+                public void onReadyForSpeech(Bundle b) { }
                 public void onBeginningOfSpeech() { }
                 public void onRmsChanged(float rms) { }
                 public void onBufferReceived(byte[] audio) { /* Never copy or store audio. */ }
@@ -66,12 +74,13 @@ public final class WakeVoiceService extends Service {
                     ArrayList<String> texts=b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     String command=null;
                     if(texts!=null) {
-                        for(String text:texts) {WakePhrase phrase=WakePhrase.parse(text);if(phrase.detected) {command=phrase.command;break;}}
-                        if(command==null&&awaitingCommand>SystemClock.elapsedRealtime()&&!texts.isEmpty()) command=texts.get(0);
+                        long now=SystemClock.elapsedRealtime();
+                        for(String text:texts) if(WakePhrase.parse(text).detected) {command=session.accept(text,now);break;}
+                        if(command==null&&!texts.isEmpty()) command=session.accept(texts.get(0),now);
                     }
                     if(command!=null) {
-                        if(command.isEmpty()) {awaitingCommand=SystemClock.elapsedRealtime()+10000;Conversation.reply(WakeVoiceService.this,"Te escucho.");}
-                        else {awaitingCommand=0;PhoneControlService control=PhoneControlService.instance;if(control!=null) control.spoken(command);else Conversation.reply(WakeVoiceService.this,"Activá el control de Jarvis en Accesibilidad.");}
+                        if(command.isEmpty()) Conversation.reply(WakeVoiceService.this,"Te escucho. Podés dar órdenes sin repetir mi nombre durante treinta segundos.");
+                        else {PhoneControlService control=PhoneControlService.instance;if(control!=null) control.spoken(command);else Conversation.reply(WakeVoiceService.this,"Activá el control de Jarvis en Accesibilidad.");}
                     }
                     schedule(500);
                 }
@@ -79,6 +88,7 @@ public final class WakeVoiceService extends Service {
                 public void onEvent(int type,Bundle b) { }
             });
             schedule(400);
+            main.post(sessionStatus);
         } catch(RuntimeException failed) {update("No pude iniciar el reconocimiento local. Revisá el servicio de voz de Android.");shutdown();}
         return START_NOT_STICKY;
     }
@@ -94,15 +104,16 @@ public final class WakeVoiceService extends Service {
     public void resumeManual() {manualPaused=false;schedule(700);}
     private void pause() {main.removeCallbacks(restart);listening=false;if(recognizer!=null) recognizer.cancel();}
     public void stopListening() {status="OK Jarvis apagado";shutdown();}
-    private void shutdown() {running=false;pause();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
+    private void shutdown() {running=false;session.close();main.removeCallbacks(sessionStatus);pause();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
     private void update(String value) {
+        if(value.equals(status)) return;
         status=value;NotificationManager m=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);if(running&&m!=null) m.notify(ID,notification());
     }
     private Notification notification() {
         PendingIntent open=PendingIntent.getActivity(this,1,new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent stop=PendingIntent.getService(this,2,new Intent(this,WakeVoiceService.class).setAction("STOP"),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         return new Notification.Builder(this,"jarvis_mic").setSmallIcon(R.drawable.ic_mic).setContentTitle("Jarvis · micrófono activo").setContentText(status).setContentIntent(open)
-            .setOngoing(true).setCategory(Notification.CATEGORY_SERVICE).addAction(new Notification.Action.Builder(null,"Apagar",stop).build()).build();
+            .setOngoing(true).setOnlyAlertOnce(true).setCategory(Notification.CATEGORY_SERVICE).addAction(new Notification.Action.Builder(null,"Apagar",stop).build()).build();
     }
     @Override public void onTaskRemoved(Intent intent) {stopListening();}
     @Override public void onDestroy() {running=false;main.removeCallbacksAndMessages(null);if(recognizer!=null) {recognizer.cancel();recognizer.destroy();}if(instance==this) instance=null;super.onDestroy();}
